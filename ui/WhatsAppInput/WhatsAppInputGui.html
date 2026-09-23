@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<!--
+  Configuration panel for the WhatsApp Input tool.
+
+  Built on Designer's own HTML GUI SDK (version 2), which ships with Designer at
+  RuntimeData/HtmlAssets/Shared/2/lib/includes.html. That choice buys something:
+  it needs no npm build, no bundler and no third-party JavaScript, so the panel
+  is a single readable file and the connector has nothing to rebuild when
+  Designer updates its themes.
+
+  Each widget is declared once in the markup with a widgetId, and bound in
+  BeforeLoad to a data item whose *name* becomes the XML element the Python side
+  reads as tool_config. So the name passed to AlteryxDataItems.X('Foo') must
+  match the key read by whatsapp_core.config - that pairing is the contract
+  between this file and config.py, and nothing else couples them.
+-->
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WhatsApp Input</title>
+  <script type="text/javascript">
+    document.write('<link rel="import" href="' + window.Alteryx.LibDir + '2/lib/includes.html">');
+  </script>
+  <style>
+    body { margin: 14px; }
+    h2 {
+      font-size: 1.25em; font-weight: 600; color: #52617f;
+      margin: 18px 0 2px 0; padding-bottom: 4px; border-bottom: 1px solid #d5dae3;
+    }
+    h2:first-child { margin-top: 0; }
+    p.hint { color: #6c7a91; font-size: 0.92em; margin: 4px 0 10px 0; line-height: 1.45; }
+    p.hint code { background: rgba(127,127,127,0.14); padding: 1px 4px; border-radius: 3px; }
+    .field { margin-bottom: 10px; }
+    .field > label { display: block; font-size: 0.95em; margin-bottom: 3px; }
+    .inline { display: flex; gap: 14px; flex-wrap: wrap; }
+    .inline > div { flex: 1 1 180px; }
+    details { margin-top: 16px; }
+    summary {
+      cursor: pointer; font-size: 1.1em; font-weight: 600;
+      color: #52617f; padding: 6px 0; outline: none;
+    }
+    .callout {
+      border-left: 3px solid #4d8fd1; background: rgba(77,143,209,0.08);
+      padding: 8px 12px; margin: 8px 0 12px 0; font-size: 0.92em; line-height: 1.5;
+    }
+    .callout strong { display: block; margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <h2>Connection</h2>
+  <p class="hint">
+    A <em>profile</em> is one linked WhatsApp account on this machine. Leave it as
+    <code>default</code> unless you need to read more than one account.
+  </p>
+
+  <div class="field">
+    <label for="ProfileBox">Profile</label>
+    <ayx data-ui-props='{type:"TextBox", widgetId:"ProfileBox", placeholder:"default"}'></ayx>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"LinkDeviceCheck", label:"Link this device (run once to set up)"}'></ayx>
+  </div>
+
+  <div class="callout">
+    <strong>First time here?</strong>
+    Tick <em>Link this device</em>, type the phone number of the WhatsApp account
+    below, and run the workflow. Designer will show an 8-character code. On that
+    phone open <em>WhatsApp &rsaquo; Settings &rsaquo; Linked devices &rsaquo; Link a
+    device &rsaquo; Link with phone number instead</em> and type the code. Then untick
+    the box and run again to read messages.
+  </div>
+
+  <div class="field">
+    <label for="LinkPhoneBox">Phone number to link (include the country code)</label>
+    <ayx data-ui-props='{type:"TextBox", widgetId:"LinkPhoneBox", placeholder:"+1 555 0100"}'></ayx>
+    <p class="hint">Leave empty to link with a QR code instead, which is printed in the results pane.</p>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"ForceRelinkCheck", label:"Replace the existing link (use after WhatsApp unlinks the device)"}'></ayx>
+  </div>
+
+  <h2>What to read</h2>
+
+  <div class="field">
+    <label>Source</label>
+    <ayx data-ui-props='{type:"DropDown", widgetId:"ModeSelect"}'></ayx>
+    <p class="hint">
+      <strong>Sync</strong> connects to WhatsApp, collects everything that arrived
+      since the last run, stores it, and returns it.
+      <strong>Archive only</strong> re-reads what earlier runs already collected
+      without connecting - useful for re-running a workflow offline.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="ChatsBox">Only these chats (optional)</label>
+    <ayx data-ui-props='{type:"TextArea", widgetId:"ChatsBox", rows:3, placeholder:"Family\n+15550100\n120363000000000000@g.us"}'></ayx>
+    <p class="hint">
+      One per line, or comma separated. Accepts a chat name, a phone number, or a
+      chat id. Leave empty for every chat. <strong>Chat ids are listed on this
+      tool's second output anchor</strong> - run it once with this box empty and
+      look at <em>Chats</em>.
+    </p>
+  </div>
+
+  <div class="inline">
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"IncludeGroupsCheck", label:"Group chats"}'></ayx>
+    </div>
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"IncludeDirectCheck", label:"Direct chats"}'></ayx>
+    </div>
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"IncludeOwnCheck", label:"Messages I sent"}'></ayx>
+    </div>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"OnlyNewCheck", label:"Only messages not returned by a previous run"}'></ayx>
+    <p class="hint">
+      Keep this on for scheduled workflows: every run returns exactly what is new.
+      Turn it off to re-read history, then use the date range below.
+    </p>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"StartFromFirstRunCheck", label:"Only read messages sent after this device was linked"}'></ayx>
+    <p class="hint">
+      WhatsApp holds messages for a linked device while it is offline and delivers
+      the lot on reconnect. With this on, the moment you linked marks the start of
+      time for this profile, so a fresh link never pulls in old conversations.
+      Anything sent after you linked still arrives, including while you were
+      setting the workflow up.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="IgnoreOlderBox">Ignore messages older than (days, 0 = no limit)</label>
+    <ayx data-ui-props='{type:"NumericSpinner", widgetId:"IgnoreOlderBox"}'></ayx>
+    <p class="hint">
+      Protects a scheduled workflow that has been paused. If it has not run for a
+      month, this stops a month of conversation arriving at once. Anything skipped
+      is counted in the Results pane, never dropped silently.
+    </p>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"UseDateRangeCheck", label:"Limit to a date range"}'></ayx>
+  </div>
+
+  <div class="inline" id="date-range-row">
+    <div class="field">
+      <label for="DateFromBox">From</label>
+      <ayx data-ui-props='{type:"DateTimeField", widgetId:"DateFromBox"}'></ayx>
+    </div>
+    <div class="field">
+      <label for="DateToBox">To</label>
+      <ayx data-ui-props='{type:"DateTimeField", widgetId:"DateToBox"}'></ayx>
+    </div>
+  </div>
+  <p class="hint" id="date-range-hint">
+    Both ends are inclusive whole days in <strong>your local time</strong>, so
+    "from today to today" covers all of today. The run log prints the exact UTC
+    window it used.
+  </p>
+
+  <div class="field">
+    <label for="MaxRecordsBox">Maximum rows (0 = no limit)</label>
+    <ayx data-ui-props='{type:"NumericSpinner", widgetId:"MaxRecordsBox"}'></ayx>
+  </div>
+
+  <h2>Attachments</h2>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"DownloadMediaCheck", label:"Download photos, videos and documents"}'></ayx>
+    <p class="hint">
+      Files are saved next to the profile and their full path appears in the
+      <code>MediaPath</code> column.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="MaxMediaBox">Skip attachments larger than (MB)</label>
+    <ayx data-ui-props='{type:"NumericSpinner", widgetId:"MaxMediaBox"}'></ayx>
+  </div>
+
+  <details>
+    <summary>Advanced</summary>
+
+    <div class="inline">
+      <div class="field">
+        <label for="IdleTimeoutBox">Stop after quiet for (seconds)</label>
+        <ayx data-ui-props='{type:"NumericSpinner", widgetId:"IdleTimeoutBox"}'></ayx>
+      </div>
+      <div class="field">
+        <label for="MaxSyncBox">Maximum time collecting (seconds)</label>
+        <ayx data-ui-props='{type:"NumericSpinner", widgetId:"MaxSyncBox"}'></ayx>
+      </div>
+      <div class="field">
+        <label for="ConnectTimeoutBox">Connection timeout (seconds)</label>
+        <ayx data-ui-props='{type:"NumericSpinner", widgetId:"ConnectTimeoutBox"}'></ayx>
+      </div>
+    </div>
+    <p class="hint">
+      WhatsApp delivers everything you missed in a burst as soon as the tool
+      connects, so a short quiet period reliably means "that was all of it".
+    </p>
+
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"EmitChatsCheck", label:"Publish the chat directory on the Chats anchor"}'></ayx>
+    </div>
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"RawJsonCheck", label:"Include a RawJson column (for troubleshooting)"}'></ayx>
+    </div>
+
+    <div class="field">
+      <label for="DeviceNameBox">Name shown on the phone under Linked devices</label>
+      <ayx data-ui-props='{type:"TextBox", widgetId:"DeviceNameBox", placeholder:"Alteryx"}'></ayx>
+    </div>
+
+    <div class="field">
+      <label for="DataDirBox">Store sessions and archives in (optional)</label>
+      <ayx data-ui-props='{type:"TextBox", widgetId:"DataDirBox", placeholder:"%LOCALAPPDATA%\\Alteryx\\WhatsAppConnector"}'></ayx>
+      <p class="hint">
+        Leave empty for the default. Point Input and Output at the same folder, or
+        they will not share a linked device.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="ProxyBox">Proxy (optional)</label>
+      <ayx data-ui-props='{type:"TextBox", widgetId:"ProxyBox", placeholder:"http://host:3128 or socks5://host:1080"}'></ayx>
+    </div>
+  </details>
+
+<script type="text/javascript">
+  /**
+   * Declare every setting in one table so the bindings stay honest.
+   *
+   * name    - the XML element, and therefore the key whatsapp_core.config reads
+   * widget  - the widgetId in the markup above
+   * kind    - which AlteryxDataItems constructor to use
+   * value   - the default applied the first time the tool is configured
+   * options - passed straight to the data item constructor
+   */
+  var SETTINGS = [
+    {name: 'Profile',         widget: 'ProfileBox',          kind: 'SimpleString', value: 'default'},
+    {name: 'LinkDevice',      widget: 'LinkDeviceCheck',     kind: 'SimpleBool',   value: false},
+    {name: 'LinkPhone',       widget: 'LinkPhoneBox',        kind: 'SimpleString', value: ''},
+    {name: 'ForceRelink',     widget: 'ForceRelinkCheck',    kind: 'SimpleBool',   value: false},
+
+    {name: 'Mode',            widget: 'ModeSelect',          kind: 'StringSelector', value: 'Sync',
+     options: {optionList: [
+       {label: 'Sync - connect to WhatsApp and collect new messages', value: 'Sync'},
+       {label: 'Archive only - re-read what earlier runs collected',  value: 'ArchiveOnly'}
+     ]}},
+
+    {name: 'Chats',             widget: 'ChatsBox',           kind: 'SimpleString', value: ''},
+    {name: 'IncludeGroups',     widget: 'IncludeGroupsCheck', kind: 'SimpleBool',   value: true},
+    {name: 'IncludeDirect',     widget: 'IncludeDirectCheck', kind: 'SimpleBool',   value: true},
+    {name: 'IncludeOwnMessages',widget: 'IncludeOwnCheck',    kind: 'SimpleBool',   value: false},
+    {name: 'OnlyNew',           widget: 'OnlyNewCheck',       kind: 'SimpleBool',   value: true},
+
+    {name: 'StartFromFirstRun', widget: 'StartFromFirstRunCheck', kind: 'SimpleBool', value: true},
+    {name: 'IgnoreOlderThanDays', widget: 'IgnoreOlderBox', kind: 'ConstrainedInt', value: 7,
+     options: {min: 0, max: 3650, step: 1}},
+    {name: 'UseDateRange', widget: 'UseDateRangeCheck', kind: 'SimpleBool', value: false},
+    {name: 'DateFrom',   widget: 'DateFromBox', kind: 'SimpleDate', value: '',
+     options: {dateFormat: 'YYYY-MM-DD'}},
+    {name: 'DateTo',     widget: 'DateToBox',   kind: 'SimpleDate', value: '',
+     options: {dateFormat: 'YYYY-MM-DD'}},
+
+    {name: 'MaxRecords', widget: 'MaxRecordsBox', kind: 'ConstrainedInt', value: 0,
+     options: {min: 0, max: 10000000, step: 100}},
+
+    {name: 'DownloadMedia', widget: 'DownloadMediaCheck', kind: 'SimpleBool', value: true},
+    {name: 'MaxMediaMb',    widget: 'MaxMediaBox',        kind: 'ConstrainedInt', value: 25,
+     options: {min: 0, max: 2048, step: 1}},
+
+    {name: 'IdleTimeout',    widget: 'IdleTimeoutBox',    kind: 'ConstrainedInt', value: 8,
+     options: {min: 1, max: 600, step: 1}},
+    {name: 'MaxSyncSeconds', widget: 'MaxSyncBox',        kind: 'ConstrainedInt', value: 120,
+     options: {min: 5, max: 3600, step: 5}},
+    {name: 'ConnectTimeout', widget: 'ConnectTimeoutBox', kind: 'ConstrainedInt', value: 60,
+     options: {min: 10, max: 600, step: 5}},
+
+    {name: 'EmitChats',      widget: 'EmitChatsCheck',  kind: 'SimpleBool',   value: true},
+    {name: 'IncludeRawJson', widget: 'RawJsonCheck',    kind: 'SimpleBool',   value: false},
+    {name: 'DeviceName',     widget: 'DeviceNameBox',   kind: 'SimpleString', value: 'Alteryx'},
+    {name: 'DataDir',        widget: 'DataDirBox',      kind: 'SimpleString', value: ''},
+    {name: 'ProxyUrl',       widget: 'ProxyBox',        kind: 'SimpleString', value: ''}
+  ];
+
+  /**
+   * Show a failure instead of a blank panel.
+   *
+   * If anything in BeforeLoad throws, the SDK stops rendering and the user
+   * gets an empty configuration window with no clue why. A banner turns that
+   * into something reportable.
+   */
+  function showPanelError(stage, err) {
+    try {
+      var banner = document.createElement('div');
+      banner.className = 'callout';
+      banner.style.margin = '12px 0';
+      banner.style.borderLeftColor = '#d98b2b';
+      banner.innerHTML =
+        '<strong>This panel could not load completely.</strong>' +
+        'The tool still runs, and its settings are unchanged. Please report ' +
+        'this with the text below.<br><br><code>' + stage + ': ' +
+        String(err && err.message ? err.message : err) + '</code>';
+      document.body.insertBefore(banner, document.body.firstChild);
+    } catch (ignored) { /* nothing more we can do */ }
+  }
+
+  Alteryx.Gui.BeforeLoad = function (manager, AlteryxDataItems, json) {
+    try {
+      // An empty Configuration means the tool has just been dropped on the
+      // canvas, so the defaults above should apply. On a saved workflow the SDK
+      // restores the stored values and we must not overwrite them.
+      var isNew = !json || !json.Configuration ||
+                  Object.keys(json.Configuration).length === 0;
+
+      SETTINGS.forEach(function (setting) {
+        var item = new AlteryxDataItems[setting.kind](setting.name, setting.options || {});
+        manager.addDataItem(item);
+        manager.bindDataItemToWidget(item, setting.widget);
+        if (isNew && setting.value !== '' && setting.value !== undefined) {
+          item.setValue(setting.value);
+        }
+      });
+    } catch (err) {
+      showPanelError('BeforeLoad', err);
+      throw err;
+    }
+  };
+
+  Alteryx.Gui.AfterLoad = function (manager) {
+    try { wireUp(manager); } catch (err) { showPanelError('AfterLoad', err); }
+  };
+
+  function wireUp(manager) {
+    // Linking is a one-off action, and the fields that serve it are noise the
+    // rest of the time. Show them only while the box is ticked.
+    var linkDevice = manager.getDataItem('LinkDevice');
+
+    function refresh() {
+      var linking = linkDevice.getValue() === true || linkDevice.getValue() === 'True';
+      ['LinkPhoneBox', 'ForceRelinkCheck'].forEach(function (widgetId) {
+        var node = document.querySelector('[data-ui-props*="' + widgetId + '"]');
+        var holder = node && node.closest('.field');
+        if (holder) { holder.style.display = linking ? '' : 'none'; }
+      });
+      var callout = document.querySelector('.callout');
+      if (callout) { callout.style.display = linking ? '' : 'none'; }
+    }
+
+    linkDevice.registerPropertyListener('value', refresh);
+    refresh();
+
+    // The date widgets pre-fill themselves with today, so they must be hidden
+    // unless the range is switched on - otherwise a user who never touched them
+    // still gets a one-day filter and loses every other message.
+    var useDates = manager.getDataItem('UseDateRange');
+
+    function refreshDates() {
+      var on = useDates.getValue() === true || useDates.getValue() === 'True';
+      ['date-range-row', 'date-range-hint'].forEach(function (id) {
+        var node = document.getElementById(id);
+        if (node) { node.style.display = on ? '' : 'none'; }
+      });
+    }
+
+    useDates.registerPropertyListener('value', refreshDates);
+    refreshDates();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Line endings.
+#
+# Git normalises text files to LF in the repository and checks them out with
+# the platform's endings. That is right for source, and wrong for one file
+# here: whatsapp.cmd uses labels (`call :use`, `goto :eof`), and cmd.exe seeks
+# labels by byte offset. In an LF-only batch file that seek can land in the
+# wrong place, so the script fails in ways that look random. The .cmd is
+# therefore pinned to CRLF wherever it is checked out.
+*.cmd text eol=crlf
+
+# Everything else: let Git decide, and keep these explicitly LF so a Windows
+# checkout does not rewrite files the build reads byte for byte.
+* text=auto
+*.py text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+
+# Binary. Never normalise, never diff as text.
+*.png binary
+*.yxi binary
+*.yxmd binary
+*.sqlite3 binary

@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<!--
+  Configuration panel for the WhatsApp Output tool.
+
+  Same approach as the Input panel: Designer's built-in HTML GUI SDK (v2), one
+  file, no build step. See WhatsAppInputGui.html for the reasoning.
+
+  The column pickers use the FieldSelector data item bound to a DropDown widget,
+  which is how the SDK populates a list from the incoming connection's metadata.
+  If a chosen column later disappears from the data, the Python side warns and
+  lists the columns that are actually present, so a stale selection explains
+  itself rather than failing every row silently.
+-->
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WhatsApp Output</title>
+  <script type="text/javascript">
+    document.write('<link rel="import" href="' + window.Alteryx.LibDir + '2/lib/includes.html">');
+  </script>
+  <style>
+    body { margin: 14px; }
+    h2 {
+      font-size: 1.25em; font-weight: 600; color: #52617f;
+      margin: 18px 0 2px 0; padding-bottom: 4px; border-bottom: 1px solid #d5dae3;
+    }
+    h2:first-child { margin-top: 0; }
+    p.hint { color: #6c7a91; font-size: 0.92em; margin: 4px 0 10px 0; line-height: 1.45; }
+    p.hint code { background: rgba(127,127,127,0.14); padding: 1px 4px; border-radius: 3px; }
+    .field { margin-bottom: 10px; }
+    .field > label { display: block; font-size: 0.95em; margin-bottom: 3px; }
+    .inline { display: flex; gap: 14px; flex-wrap: wrap; }
+    .inline > div { flex: 1 1 180px; }
+    details { margin-top: 16px; }
+    summary {
+      cursor: pointer; font-size: 1.1em; font-weight: 600;
+      color: #52617f; padding: 6px 0; outline: none;
+    }
+    .callout {
+      border-left: 3px solid #4d8fd1; background: rgba(77,143,209,0.08);
+      padding: 8px 12px; margin: 8px 0 12px 0; font-size: 0.92em; line-height: 1.5;
+    }
+    .callout strong { display: block; margin-bottom: 3px; }
+    .warn { border-left-color: #d98b2b; background: rgba(217,139,43,0.10); }
+  </style>
+</head>
+<body>
+
+  <h2>Connection</h2>
+  <p class="hint">
+    A <em>profile</em> is one linked WhatsApp account on this machine. Use the same
+    profile name as the WhatsApp Input tool to share one linked device.
+  </p>
+
+  <div class="field">
+    <label for="ProfileBox">Profile</label>
+    <ayx data-ui-props='{type:"TextBox", widgetId:"ProfileBox", placeholder:"default"}'></ayx>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"LinkDeviceCheck", label:"Link this device (run once to set up)"}'></ayx>
+  </div>
+
+  <div class="callout">
+    <strong>First time here?</strong>
+    Tick <em>Link this device</em>, type the phone number of the WhatsApp account
+    below, and run the workflow. Designer will show an 8-character code. On that
+    phone open <em>WhatsApp &rsaquo; Settings &rsaquo; Linked devices &rsaquo; Link a
+    device &rsaquo; Link with phone number instead</em> and type the code. Then untick
+    the box and run again to send.
+  </div>
+
+  <div class="field">
+    <label for="LinkPhoneBox">Phone number to link (include the country code)</label>
+    <ayx data-ui-props='{type:"TextBox", widgetId:"LinkPhoneBox", placeholder:"+1 555 0100"}'></ayx>
+    <p class="hint">Leave empty to link with a QR code instead, which is printed in the results pane.</p>
+  </div>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"CheckBox", widgetId:"ForceRelinkCheck", label:"Replace the existing link (use after WhatsApp unlinks the device)"}'></ayx>
+  </div>
+
+  <h2>Send to</h2>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"RadioGroup", widgetId:"ToSourceRadio"}'></ayx>
+  </div>
+
+  <div class="field" id="to-field-row">
+    <label for="ToFieldSelect">Column holding the destination</label>
+    <ayx data-ui-props='{type:"DropDown", widgetId:"ToFieldSelect"}'></ayx>
+  </div>
+
+  <div class="field" id="to-fixed-row">
+    <label for="ToFixedBox">Destination</label>
+    <ayx data-ui-props='{type:"TextBox", widgetId:"ToFixedBox", placeholder:"+15550100, Family, or 120363000000000000@g.us"}'></ayx>
+  </div>
+
+  <p class="hint">
+    A destination can be a <strong>phone number</strong> in any format
+    (<code>+1 555 0100</code>, <code>0015550100</code>), a
+    <strong>chat id</strong> (<code>120363000000000000@g.us</code> for a group), or the
+    <strong>name of a chat</strong> this profile already knows. Chat names come
+    from the WhatsApp Input tool's <em>Chats</em> anchor, so run that once first.
+  </p>
+
+  <div class="field">
+    <label for="CountryCodeBox">Default country code for numbers without one</label>
+    <ayx data-ui-props='{type:"TextBox", widgetId:"CountryCodeBox", placeholder:"34"}'></ayx>
+    <p class="hint">
+      Lets a column of local numbers such as <code>5550100</code> work as-is.
+      Digits only, no <code>+</code>. Numbers that already carry a country code
+      are left alone.
+    </p>
+  </div>
+
+  <h2>Message</h2>
+
+  <div class="field">
+    <ayx data-ui-props='{type:"RadioGroup", widgetId:"MessageSourceRadio"}'></ayx>
+  </div>
+
+  <div class="field" id="message-field-row">
+    <label for="MessageFieldSelect">Column holding the message text</label>
+    <ayx data-ui-props='{type:"DropDown", widgetId:"MessageFieldSelect"}'></ayx>
+  </div>
+
+  <div class="field" id="message-fixed-row">
+    <label for="MessageFixedBox">Message</label>
+    <ayx data-ui-props='{type:"TextArea", widgetId:"MessageFixedBox", rows:4}'></ayx>
+  </div>
+
+  <h2>Attachment (optional)</h2>
+
+  <div class="field">
+    <label for="AttachmentFieldSelect">Column holding a file path</label>
+    <ayx data-ui-props='{type:"DropDown", widgetId:"AttachmentFieldSelect"}'></ayx>
+    <p class="hint">
+      Images and videos are sent so they preview in the chat; anything else is
+      sent as a document keeping its filename. Leave unset to send text only.
+    </p>
+  </div>
+
+  <div class="field">
+    <label for="CaptionFieldSelect">Column holding the attachment caption</label>
+    <ayx data-ui-props='{type:"DropDown", widgetId:"CaptionFieldSelect"}'></ayx>
+    <p class="hint">
+      Leave unset and the message text becomes the caption, so one row sends one
+      message rather than two.
+    </p>
+  </div>
+
+  <details>
+    <summary>Advanced</summary>
+
+    <div class="callout warn">
+      <strong>Pace matters.</strong>
+      WhatsApp suspends accounts that behave like broadcasters. The default of 20
+      messages per minute is a gentle default. Raise it only for chats that
+      expect the traffic, and never use this tool for unsolicited messaging.
+    </div>
+
+    <div class="inline">
+      <div class="field">
+        <label for="RateBox">Messages per minute</label>
+        <ayx data-ui-props='{type:"NumericSpinner", widgetId:"RateBox"}'></ayx>
+      </div>
+      <div class="field">
+        <label for="SendTimeoutBox">Send timeout (seconds)</label>
+        <ayx data-ui-props='{type:"NumericSpinner", widgetId:"SendTimeoutBox"}'></ayx>
+      </div>
+      <div class="field">
+        <label for="ConnectTimeoutBox">Connection timeout (seconds)</label>
+        <ayx data-ui-props='{type:"NumericSpinner", widgetId:"ConnectTimeoutBox"}'></ayx>
+      </div>
+    </div>
+
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"VerifyCheck", label:"Check each number has WhatsApp before sending"}'></ayx>
+    </div>
+
+    <div class="field">
+      <ayx data-ui-props='{type:"CheckBox", widgetId:"FailOnErrorCheck", label:"Stop the workflow on the first failure"}'></ayx>
+      <p class="hint">
+        Off by default: every row is reported on the output anchor with a
+        <code>Success</code> flag and an <code>Error</code> message, so failures
+        can be routed instead of stopping the run.
+      </p>
+    </div>
+
+    <div class="field">
+      <label for="DeviceNameBox">Name shown on the phone under Linked devices</label>
+      <ayx data-ui-props='{type:"TextBox", widgetId:"DeviceNameBox", placeholder:"Alteryx"}'></ayx>
+    </div>
+
+    <div class="field">
+      <label for="DataDirBox">Store sessions and archives in (optional)</label>
+      <ayx data-ui-props='{type:"TextBox", widgetId:"DataDirBox", placeholder:"%LOCALAPPDATA%\\Alteryx\\WhatsAppConnector"}'></ayx>
+      <p class="hint">Must match the WhatsApp Input tool, or they will not share a linked device.</p>
+    </div>
+
+    <div class="field">
+      <label for="ProxyBox">Proxy (optional)</label>
+      <ayx data-ui-props='{type:"TextBox", widgetId:"ProxyBox", placeholder:"http://host:3128 or socks5://host:1080"}'></ayx>
+    </div>
+  </details>
+
+<script type="text/javascript">
+  var SOURCE_OPTIONS = [
+    {label: 'Take it from a column of the incoming data', value: 'Field'},
+    {label: 'Use the same value for every row',           value: 'Fixed'}
+  ];
+
+  var SETTINGS = [
+    {name: 'Profile',     widget: 'ProfileBox',       kind: 'SimpleString', value: 'default'},
+    {name: 'LinkDevice',  widget: 'LinkDeviceCheck',  kind: 'SimpleBool',   value: false},
+    {name: 'LinkPhone',   widget: 'LinkPhoneBox',     kind: 'SimpleString', value: ''},
+    {name: 'ForceRelink', widget: 'ForceRelinkCheck', kind: 'SimpleBool',   value: false},
+
+    {name: 'ToSource', widget: 'ToSourceRadio', kind: 'StringSelector', value: 'Field',
+     options: {optionList: SOURCE_OPTIONS}},
+    {name: 'ToField',  widget: 'ToFieldSelect', kind: 'ColumnSelector', value: ''},
+    {name: 'ToFixed',  widget: 'ToFixedBox',    kind: 'SimpleString',   value: ''},
+
+    {name: 'DefaultCountryCode', widget: 'CountryCodeBox', kind: 'SimpleString', value: ''},
+
+    {name: 'MessageSource', widget: 'MessageSourceRadio', kind: 'StringSelector', value: 'Field',
+     options: {optionList: SOURCE_OPTIONS}},
+    {name: 'MessageField',  widget: 'MessageFieldSelect', kind: 'ColumnSelector', value: ''},
+    {name: 'MessageFixed',  widget: 'MessageFixedBox',    kind: 'SimpleString',   value: ''},
+
+    {name: 'AttachmentField', widget: 'AttachmentFieldSelect', kind: 'ColumnSelector',
+     value: '', optional: true},
+    {name: 'CaptionField',    widget: 'CaptionFieldSelect',    kind: 'ColumnSelector',
+     value: '', optional: true},
+
+    {name: 'MessagesPerMinute', widget: 'RateBox', kind: 'ConstrainedInt', value: 20,
+     options: {min: 1, max: 600, step: 1}},
+    {name: 'SendTimeout', widget: 'SendTimeoutBox', kind: 'ConstrainedInt', value: 60,
+     options: {min: 5, max: 600, step: 5}},
+    {name: 'ConnectTimeout', widget: 'ConnectTimeoutBox', kind: 'ConstrainedInt', value: 60,
+     options: {min: 10, max: 600, step: 5}},
+
+    {name: 'VerifyRecipients', widget: 'VerifyCheck',      kind: 'SimpleBool',   value: true},
+    {name: 'FailOnError',      widget: 'FailOnErrorCheck', kind: 'SimpleBool',   value: false},
+    {name: 'DeviceName',       widget: 'DeviceNameBox',    kind: 'SimpleString', value: 'Alteryx'},
+    {name: 'DataDir',          widget: 'DataDirBox',       kind: 'SimpleString', value: ''},
+    {name: 'ProxyUrl',         widget: 'ProxyBox',         kind: 'SimpleString', value: ''}
+  ];
+
+  /**
+   * Show a failure instead of a blank panel.
+   *
+   * If anything in BeforeLoad throws, the SDK stops rendering and the user
+   * gets an empty configuration window with no clue why - which is exactly
+   * what an unverified data-item type produced here once. A banner turns that
+   * into something reportable.
+   */
+  function showPanelError(stage, err) {
+    try {
+      var banner = document.createElement('div');
+      banner.className = 'callout warn';
+      banner.style.margin = '12px 0';
+      banner.innerHTML =
+        '<strong>This panel could not load completely.</strong>' +
+        'The tool still runs, and its settings are unchanged. Please report ' +
+        'this with the text below.<br><br><code>' + stage + ': ' +
+        String(err && err.message ? err.message : err) + '</code>';
+      document.body.insertBefore(banner, document.body.firstChild);
+    } catch (ignored) { /* nothing more we can do */ }
+  }
+
+  /**
+   * The column names arriving on the input anchor.
+   *
+   * Returns [] rather than throwing when the tool is not connected yet, or
+   * when the SDK does not expose the call - a picker with no options is a
+   * recoverable inconvenience, a broken panel is not.
+   */
+  function incomingColumns(manager) {
+    try {
+      var fields = manager.getIncomingFields ? manager.getIncomingFields(0, 0) : null;
+      if (!fields || !fields.length) { return []; }
+      var names = [];
+      for (var i = 0; i < fields.length; i += 1) {
+        var field = fields[i];
+        var name = field && (field.name || field.strName || field.Name);
+        if (name) { names.push(String(name)); }
+      }
+      return names;
+    } catch (err) {
+      return [];
+    }
+  }
+
+  Alteryx.Gui.BeforeLoad = function (manager, AlteryxDataItems, json) {
+    try {
+      var configuration = (json && json.Configuration) || {};
+      var isNew = Object.keys(configuration).length === 0;
+      var columns = incomingColumns(manager);
+
+      SETTINGS.forEach(function (setting) {
+        var kind = setting.kind;
+        var options = setting.options || {};
+
+        // A "ColumnSelector" is a StringSelector whose options are the columns
+        // of the incoming data. StringSelector is used rather than the SDK's
+        // FieldSelector because it is the type the shipped HTML GUI SDK sample
+        // demonstrates, and therefore the one known to work here.
+        if (kind === 'ColumnSelector') {
+          kind = 'StringSelector';
+          var list = [];
+          if (setting.optional) {
+            list.push({label: '(none)', value: ''});
+          }
+          columns.forEach(function (name) {
+            list.push({label: name, value: name});
+          });
+          // Keep a saved selection usable even when the upstream tool is
+          // disconnected, so opening the panel cannot silently clear it.
+          var saved = configuration[setting.name];
+          saved = saved && (saved['@value'] !== undefined ? saved['@value'] : saved);
+          if (saved && columns.indexOf(String(saved)) === -1) {
+            list.push({label: String(saved) + ' (not in the incoming data)',
+                       value: String(saved)});
+          }
+          if (!list.length) {
+            list.push({label: '(connect an input to choose a column)', value: ''});
+          }
+          options = {optionList: list};
+        }
+
+        var item = new AlteryxDataItems[kind](setting.name, options);
+        manager.addDataItem(item);
+        manager.bindDataItemToWidget(item, setting.widget);
+        if (isNew && setting.value !== '' && setting.value !== undefined) {
+          item.setValue(setting.value);
+        }
+      });
+    } catch (err) {
+      showPanelError('BeforeLoad', err);
+      throw err;
+    }
+  };
+
+  Alteryx.Gui.AfterLoad = function (manager) {
+    try {
+      wireUp(manager);
+    } catch (err) {
+      // The panel has already rendered by this point, so a failure here costs
+      // only the show/hide behaviour. Report it rather than leaving the user
+      // with two contradictory inputs and no explanation.
+      showPanelError('AfterLoad', err);
+    }
+  };
+
+  function wireUp(manager) {
+    // Only ever show the input that the matching radio button selects. Leaving
+    // both on screen is the quickest way to have someone fill in the one that
+    // is being ignored and conclude the tool is broken.
+    function toggle(rowId, visible) {
+      var row = document.getElementById(rowId);
+      if (row) { row.style.display = visible ? '' : 'none'; }
+    }
+
+    function bindSource(itemName, fieldRow, fixedRow) {
+      var item = manager.getDataItem(itemName);
+      function refresh() {
+        var useField = item.getValue() !== 'Fixed';
+        toggle(fieldRow, useField);
+        toggle(fixedRow, !useField);
+      }
+      item.registerPropertyListener('value', refresh);
+      refresh();
+    }
+
+    bindSource('ToSource', 'to-field-row', 'to-fixed-row');
+    bindSource('MessageSource', 'message-field-row', 'message-fixed-row');
+
+    var linkDevice = manager.getDataItem('LinkDevice');
+    function refreshLink() {
+      var linking = linkDevice.getValue() === true || linkDevice.getValue() === 'True';
+      ['LinkPhoneBox', 'ForceRelinkCheck'].forEach(function (widgetId) {
+        var node = document.querySelector('[data-ui-props*="' + widgetId + '"]');
+        var holder = node && node.closest('.field');
+        if (holder) { holder.style.display = linking ? '' : 'none'; }
+      });
+      var callout = document.querySelector('.callout');
+      if (callout) { callout.style.display = linking ? '' : 'none'; }
+    }
+    linkDevice.registerPropertyListener('value', refreshLink);
+    refreshLink();
+  }
+</script>
+</body>
+</html>
